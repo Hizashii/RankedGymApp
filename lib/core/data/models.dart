@@ -1,376 +1,324 @@
-enum Sex { male, female, other }
+enum RestartGoal { feelConsistentAgain, returnToGym, buildStrengthAgain }
 
-enum FitnessGoal {
-  weightLoss,
-  hypertrophy,
-  strength,
-  endurance,
-  generalFitness,
-  // Backward-compat for existing screen/service switches.
-  conditioning,
-  general,
-}
+enum TimeOffRange { weeks2to4, months1to6, travelDisruption, illnessOrBurnout }
 
-enum DifficultyTier { easy, moderate, hard, elite }
-enum QuestDifficulty { easy, moderate, hard, elite }
+enum BreakReason { scheduleCollapsed, motivationDrop, travel, illnessOrBurnout }
 
-enum QuestType {
-  daily,
-  weekly,
-  milestone,
-  // Backward-compat with current quest engine.
-  consistency,
-  overload,
-  weakPoint,
-}
+enum EquipmentOption { gym, dumbbells, home, bodyweight }
 
-enum SystemMessageType { inactive, active, quest, warning, rankUp }
-enum ChatRole { system, user }
+enum CurrentFeel { lowEnergy, mediumEnergy, highEnergy, stiff }
 
-enum MuscleGroup {
-  chest,
-  back,
-  shoulders,
-  biceps,
-  triceps,
-  quads,
-  hamstrings,
-  glutes,
-  calves,
-  core,
-  fullBody,
-}
+enum SessionDifficulty { easy, moderate, challenging }
 
-enum MovementPattern {
-  horizontalPush,
-  horizontalPull,
-  verticalPush,
-  verticalPull,
-  squat,
-  hinge,
-  lunge,
-  carry,
-  core,
-  conditioning,
-}
+enum HardnessFeedback { tooEasy, right, tooHard }
 
-enum HunterRank { E, D, C, B, A, S, SS, SSS }
+enum NextSessionTiming { tomorrow, later }
 
-class UserProfile {
-  UserProfile({
-    required this.id,
-    required this.name,
-    required this.sex,
-    required this.age,
-    required this.bodyweightKg,
+class OnboardingAnswers {
+  const OnboardingAnswers({
     required this.goal,
-    required this.availableEquipment,
-    required this.streakDays,
-    required this.totalXp,
-    required this.coins,
-    this.lastSessionDate,
+    required this.timeOff,
+    required this.reason,
+    required this.equipment,
+    required this.preferredWorkoutMinutes,
+    required this.currentFeel,
   });
 
-  final String id;
-  final String name;
-  final Sex sex;
-  final int age;
-  final int streakDays;
-  final int totalXp;
-  final int coins;
-  final double bodyweightKg;
-  final FitnessGoal goal;
-  final Set<String> availableEquipment;
-  final DateTime? lastSessionDate;
+  final RestartGoal goal;
+  final TimeOffRange timeOff;
+  final BreakReason reason;
+  final Set<EquipmentOption> equipment;
+  final int preferredWorkoutMinutes;
+  final CurrentFeel currentFeel;
 
-  UserProfile copyWith({
-    String? id,
-    String? name,
-    Sex? sex,
-    int? age,
-    int? streakDays,
-    int? totalXp,
-    int? coins,
-    double? bodyweightKg,
-    FitnessGoal? goal,
-    Set<String>? availableEquipment,
-    DateTime? lastSessionDate,
-  }) {
-    return UserProfile(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      sex: sex ?? this.sex,
-      age: age ?? this.age,
-      streakDays: streakDays ?? this.streakDays,
-      totalXp: totalXp ?? this.totalXp,
-      coins: coins ?? this.coins,
-      bodyweightKg: bodyweightKg ?? this.bodyweightKg,
-      goal: goal ?? this.goal,
-      availableEquipment: availableEquipment ?? this.availableEquipment,
-      lastSessionDate: lastSessionDate ?? this.lastSessionDate,
+  Map<String, dynamic> toMap() {
+    return {
+      'goal': goal.name,
+      'timeOff': timeOff.name,
+      'reason': reason.name,
+      'equipment': equipment.map((item) => item.name).toList(),
+      'preferredWorkoutMinutes': preferredWorkoutMinutes,
+      'currentFeel': currentFeel.name,
+    };
+  }
+
+  static OnboardingAnswers fromMap(Map<String, dynamic> map) {
+    return OnboardingAnswers(
+      goal: RestartGoal.values.firstWhere((value) => value.name == map['goal']),
+      timeOff: TimeOffRange.values
+          .firstWhere((value) => value.name == map['timeOff']),
+      reason:
+          BreakReason.values.firstWhere((value) => value.name == map['reason']),
+      equipment: ((map['equipment'] as List<dynamic>?) ?? [])
+          .map((item) => EquipmentOption.values
+              .firstWhere((value) => value.name == '$item'))
+          .toSet(),
+      preferredWorkoutMinutes: (map['preferredWorkoutMinutes'] as num).toInt(),
+      currentFeel: CurrentFeel.values
+          .firstWhere((value) => value.name == map['currentFeel']),
     );
   }
 }
 
-class Exercise {
-  Exercise({
+class ExerciseDefinition {
+  const ExerciseDefinition({
     required this.id,
     required this.name,
-    required this.primaryMuscles,
-    required this.movementPattern,
-    required this.difficulty,
+    required this.formTip,
     required this.equipment,
+    required this.swaps,
   });
 
   final String id;
   final String name;
-  final List<MuscleGroup> primaryMuscles;
-  final MovementPattern movementPattern;
-  final DifficultyTier difficulty;
-  final String equipment;
+  final String formTip;
+  final EquipmentOption equipment;
+  final List<String> swaps;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'formTip': formTip,
+      'equipment': equipment.name,
+      'swaps': swaps,
+    };
+  }
+
+  static ExerciseDefinition fromMap(Map<String, dynamic> map) {
+    return ExerciseDefinition(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      formTip: map['formTip'] as String,
+      equipment: EquipmentOption.values
+          .firstWhere((value) => value.name == map['equipment']),
+      swaps: ((map['swaps'] as List<dynamic>?) ?? [])
+          .map((item) => '$item')
+          .toList(),
+    );
+  }
 }
 
-class WorkoutSet {
-  WorkoutSet({
-    required this.reps,
-    required this.loadKg,
-    required this.rpe,
-  });
-
-  final int reps;
-  final double loadKg;
-  final double rpe;
-}
-
-class LoggedExercise {
-  LoggedExercise({
+class SessionExercise {
+  const SessionExercise({
     required this.exerciseId,
     required this.sets,
+    required this.reps,
+    required this.restSeconds,
   });
 
   final String exerciseId;
-  final List<WorkoutSet> sets;
+  final int sets;
+  final int reps;
+  final int restSeconds;
+
+  SessionExercise copyWith({
+    String? exerciseId,
+    int? sets,
+    int? reps,
+    int? restSeconds,
+  }) {
+    return SessionExercise(
+      exerciseId: exerciseId ?? this.exerciseId,
+      sets: sets ?? this.sets,
+      reps: reps ?? this.reps,
+      restSeconds: restSeconds ?? this.restSeconds,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'exerciseId': exerciseId,
+      'sets': sets,
+      'reps': reps,
+      'restSeconds': restSeconds,
+    };
+  }
+
+  static SessionExercise fromMap(Map<String, dynamic> map) {
+    return SessionExercise(
+      exerciseId: map['exerciseId'] as String,
+      sets: (map['sets'] as num).toInt(),
+      reps: (map['reps'] as num).toInt(),
+      restSeconds: (map['restSeconds'] as num).toInt(),
+    );
+  }
 }
 
-class WorkoutSession {
-  WorkoutSession({
+class RestartSessionTemplate {
+  const RestartSessionTemplate({
     required this.id,
-    required this.date,
-    required this.durationMinutes,
-    required this.difficultyTier,
-    required this.completed,
-    required this.loggedExercises,
-  });
-
-  final String id;
-  final DateTime date;
-  final int durationMinutes;
-  final DifficultyTier difficultyTier;
-  final bool completed;
-  final List<LoggedExercise> loggedExercises;
-}
-
-class PersonalPlan {
-  PersonalPlan({
-    required this.id,
-    required this.name,
-    required this.daysPerWeek,
-    required this.exerciseIds,
-  });
-
-  final String id;
-  final String name;
-  final int daysPerWeek;
-  final List<String> exerciseIds;
-}
-
-class Program {
-  Program({
-    required this.id,
+    required this.path,
     required this.title,
-    required this.description,
-    required this.weeks,
-    required this.exerciseIds,
-  });
-
-  final String id;
-  final String title;
-  final String description;
-  final int weeks;
-  final List<String> exerciseIds;
-}
-
-class ProgressionSnapshot {
-  ProgressionSnapshot({
-    required this.compositeScore,
-    required this.rank,
-    required this.rankProgress,
-    required this.insights,
-  });
-
-  final double compositeScore;
-  final String rank;
-  final double rankProgress;
-  final List<String> insights;
-}
-
-class MuscleStatus {
-  MuscleStatus({
-    required this.group,
-    required this.stimulusScore,
-    required this.performanceScore,
-    required this.isWeakPoint,
-  });
-
-  final MuscleGroup group;
-  final double stimulusScore;
-  final double performanceScore;
-  final bool isWeakPoint;
-}
-
-class Quest {
-  Quest({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.type,
+    required this.defaultMinutes,
     required this.difficulty,
-    required this.target,
-    required this.progress,
-    required this.rewardXp,
-    required this.rewardCoins,
-    required this.completed,
-    required this.claimed,
-    this.expiresAt,
+    required this.rampLevel,
+    required this.exercises,
+    required this.reassurance,
   });
 
   final String id;
+  final TimeOffRange path;
   final String title;
-  final String description;
-  final QuestType type;
-  final DifficultyTier difficulty;
-  final double target;
-  final double progress;
-  final int rewardXp;
-  final int rewardCoins;
-  final bool completed;
-  final bool claimed;
-  final DateTime? expiresAt;
-
-  String get name => title;
-
-  Quest copyWith({
-    String? title,
-    double? progress,
-    bool? completed,
-    bool? claimed,
-    DateTime? expiresAt,
-  }) {
-    return Quest(
-      id: id,
-      title: title ?? this.title,
-      description: description,
-      type: type,
-      difficulty: difficulty,
-      target: target,
-      progress: progress ?? this.progress,
-      rewardXp: rewardXp,
-      rewardCoins: rewardCoins,
-      completed: completed ?? this.completed,
-      claimed: claimed ?? this.claimed,
-      expiresAt: expiresAt ?? this.expiresAt,
-    );
-  }
+  final int defaultMinutes;
+  final SessionDifficulty difficulty;
+  final int rampLevel;
+  final List<SessionExercise> exercises;
+  final String reassurance;
 }
 
-class SystemMessage {
-  const SystemMessage({
-    required this.text,
-    required this.type,
-    required this.timestamp,
-  });
-
-  final String text;
-  final SystemMessageType type;
-  final DateTime timestamp;
-}
-
-class NutritionPlan {
-  const NutritionPlan({
-    required this.dailyKcal,
-    required this.proteinG,
-    required this.carbsG,
-    required this.fatG,
-    required this.targetWeightKg,
-    required this.strategy,
-  });
-
-  final int dailyKcal;
-  final int proteinG;
-  final int carbsG;
-  final int fatG;
-  final double targetWeightKg;
-  final String strategy;
-}
-
-class RewardWallet {
-  RewardWallet({
-    required this.xp,
-    required this.coins,
-    required this.streakDays,
-  });
-
-  final int xp;
-  final int coins;
-  final int streakDays;
-
-  RewardWallet copyWith({
-    int? xp,
-    int? coins,
-    int? streakDays,
-  }) {
-    return RewardWallet(
-      xp: xp ?? this.xp,
-      coins: coins ?? this.coins,
-      streakDays: streakDays ?? this.streakDays,
-    );
-  }
-}
-
-class AdminTuning {
-  const AdminTuning({
-    required this.rewardMultiplier,
-    required this.questFrequencyHours,
-    required this.rankSensitivity,
-  });
-
-  final double rewardMultiplier;
-  final int questFrequencyHours;
-  final double rankSensitivity;
-
-  AdminTuning copyWith({
-    double? rewardMultiplier,
-    int? questFrequencyHours,
-    double? rankSensitivity,
-  }) {
-    return AdminTuning(
-      rewardMultiplier: rewardMultiplier ?? this.rewardMultiplier,
-      questFrequencyHours: questFrequencyHours ?? this.questFrequencyHours,
-      rankSensitivity: rankSensitivity ?? this.rankSensitivity,
-    );
-  }
-}
-
-class ChatMessage {
-  const ChatMessage({
+class AssignedSession {
+  const AssignedSession({
     required this.id,
-    required this.role,
-    required this.content,
-    required this.createdAt,
+    required this.templateId,
+    required this.title,
+    required this.dayNumber,
+    required this.estimatedMinutes,
+    required this.difficulty,
+    required this.reassurance,
+    required this.exercises,
+    required this.scheduledDate,
   });
 
   final String id;
-  final ChatRole role;
-  final String content;
-  final DateTime createdAt;
+  final String templateId;
+  final String title;
+  final int dayNumber;
+  final int estimatedMinutes;
+  final SessionDifficulty difficulty;
+  final String reassurance;
+  final List<SessionExercise> exercises;
+  final DateTime scheduledDate;
+
+  AssignedSession copyWith({
+    String? id,
+    String? templateId,
+    String? title,
+    int? dayNumber,
+    int? estimatedMinutes,
+    SessionDifficulty? difficulty,
+    String? reassurance,
+    List<SessionExercise>? exercises,
+    DateTime? scheduledDate,
+  }) {
+    return AssignedSession(
+      id: id ?? this.id,
+      templateId: templateId ?? this.templateId,
+      title: title ?? this.title,
+      dayNumber: dayNumber ?? this.dayNumber,
+      estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
+      difficulty: difficulty ?? this.difficulty,
+      reassurance: reassurance ?? this.reassurance,
+      exercises: exercises ?? this.exercises,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'templateId': templateId,
+      'title': title,
+      'dayNumber': dayNumber,
+      'estimatedMinutes': estimatedMinutes,
+      'difficulty': difficulty.name,
+      'reassurance': reassurance,
+      'exercises': exercises.map((item) => item.toMap()).toList(),
+      'scheduledDate': scheduledDate.toIso8601String(),
+    };
+  }
+
+  static AssignedSession fromMap(Map<String, dynamic> map) {
+    return AssignedSession(
+      id: map['id'] as String,
+      templateId: map['templateId'] as String,
+      title: map['title'] as String,
+      dayNumber: (map['dayNumber'] as num).toInt(),
+      estimatedMinutes: (map['estimatedMinutes'] as num).toInt(),
+      difficulty: SessionDifficulty.values
+          .firstWhere((value) => value.name == map['difficulty']),
+      reassurance: map['reassurance'] as String,
+      exercises: ((map['exercises'] as List<dynamic>?) ?? [])
+          .map((item) => SessionExercise.fromMap(item as Map<String, dynamic>))
+          .toList(),
+      scheduledDate: DateTime.parse(map['scheduledDate'] as String),
+    );
+  }
+}
+
+class PostWorkoutCheckIn {
+  const PostWorkoutCheckIn({
+    required this.hardness,
+    required this.painReported,
+    required this.nextSessionTiming,
+    required this.submittedAt,
+  });
+
+  final HardnessFeedback hardness;
+  final bool painReported;
+  final NextSessionTiming nextSessionTiming;
+  final DateTime submittedAt;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'hardness': hardness.name,
+      'painReported': painReported,
+      'nextSessionTiming': nextSessionTiming.name,
+      'submittedAt': submittedAt.toIso8601String(),
+    };
+  }
+
+  static PostWorkoutCheckIn fromMap(Map<String, dynamic> map) {
+    return PostWorkoutCheckIn(
+      hardness: HardnessFeedback.values
+          .firstWhere((value) => value.name == map['hardness']),
+      painReported: map['painReported'] as bool,
+      nextSessionTiming: NextSessionTiming.values
+          .firstWhere((value) => value.name == map['nextSessionTiming']),
+      submittedAt: DateTime.parse(map['submittedAt'] as String),
+    );
+  }
+}
+
+class CompletedSession {
+  const CompletedSession({
+    required this.session,
+    required this.completedAt,
+    this.checkIn,
+  });
+
+  final AssignedSession session;
+  final DateTime completedAt;
+  final PostWorkoutCheckIn? checkIn;
+
+  CompletedSession copyWith({
+    AssignedSession? session,
+    DateTime? completedAt,
+    PostWorkoutCheckIn? checkIn,
+    bool clearCheckIn = false,
+  }) {
+    return CompletedSession(
+      session: session ?? this.session,
+      completedAt: completedAt ?? this.completedAt,
+      checkIn: clearCheckIn ? null : (checkIn ?? this.checkIn),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'session': session.toMap(),
+      'completedAt': completedAt.toIso8601String(),
+      'checkIn': checkIn?.toMap(),
+    };
+  }
+
+  static CompletedSession fromMap(Map<String, dynamic> map) {
+    return CompletedSession(
+      session: AssignedSession.fromMap(map['session'] as Map<String, dynamic>),
+      completedAt: DateTime.parse(map['completedAt'] as String),
+      checkIn: map['checkIn'] == null
+          ? null
+          : PostWorkoutCheckIn.fromMap(map['checkIn'] as Map<String, dynamic>),
+    );
+  }
 }

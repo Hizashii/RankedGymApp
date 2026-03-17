@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ranked_gym/core/data/fitness_repository.dart';
-import 'package:ranked_gym/core/services/system_message/StartupGate.dart';
 import 'package:ranked_gym/core/design/app_theme.dart';
+import 'package:ranked_gym/core/services/system_message/startup_gate.dart';
 
 class RankedGymApp extends StatefulWidget {
   const RankedGymApp({super.key});

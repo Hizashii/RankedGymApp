@@ -6,10 +6,12 @@ class AnimatedParticlesBackground extends StatefulWidget {
   const AnimatedParticlesBackground({super.key});
 
   @override
-  State<AnimatedParticlesBackground> createState() => _AnimatedParticlesBackgroundState();
+  State<AnimatedParticlesBackground> createState() =>
+      _AnimatedParticlesBackgroundState();
 }
 
-class _AnimatedParticlesBackgroundState extends State<AnimatedParticlesBackground>
+class _AnimatedParticlesBackgroundState
+    extends State<AnimatedParticlesBackground>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -63,8 +65,11 @@ class _ParticlesPainter extends CustomPainter {
     const count = 34;
     for (var i = 0; i < count; i++) {
       final seed = i / count;
-      final xBase = (seed * size.width + 40 * math.sin((progress * 2 * math.pi) + i)).clamp(0, size.width);
-      final yShift = (progress * size.height * 1.2 + i * 23) % (size.height + 80);
+      final xBase =
+          (seed * size.width + 40 * math.sin((progress * 2 * math.pi) + i))
+              .clamp(0, size.width);
+      final yShift =
+          (progress * size.height * 1.2 + i * 23) % (size.height + 80);
       final y = (size.height - yShift).clamp(0, size.height);
       final radius = 1.4 + (i % 4) * 0.55;
       particlePaint.color = Color.lerp(
@@ -73,10 +78,12 @@ class _ParticlesPainter extends CustomPainter {
             ((math.sin(progress * math.pi * 2 + i) + 1) / 2),
           ) ??
           const Color(0x803AB3FF);
-      canvas.drawCircle(Offset(xBase.toDouble(), y.toDouble()), radius, particlePaint);
+      canvas.drawCircle(
+          Offset(xBase.toDouble(), y.toDouble()), radius, particlePaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) => oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _ParticlesPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

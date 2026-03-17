@@ -1,96 +1,156 @@
 import 'package:flutter/material.dart';
 import 'package:ranked_gym/app/navigation_shell.dart';
-import 'package:ranked_gym/app/widgets/rank_up_overlay.dart';
+import 'package:ranked_gym/app/app.dart';
 import 'package:ranked_gym/core/data/models.dart';
 
 class SessionSummaryScreen extends StatefulWidget {
-  const SessionSummaryScreen({
-    required this.session,
-    required this.xpGained,
-    required this.previousRank,
-    required this.newRank,
-    super.key,
-  });
-
-  final WorkoutSession session;
-  final int xpGained;
-  final HunterRank previousRank;
-  final HunterRank newRank;
+  const SessionSummaryScreen({super.key});
 
   @override
   State<SessionSummaryScreen> createState() => _SessionSummaryScreenState();
 }
 
 class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
-  bool _overlayShown = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_overlayShown) return;
-    _overlayShown = true;
-    if (widget.newRank.index > widget.previousRank.index) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showGeneralDialog(
-          context: context,
-          barrierDismissible: false,
-          barrierLabel: 'rank_up',
-          pageBuilder: (_, __, ___) => RankUpOverlay(newRank: widget.newRank),
-        );
-      });
-    }
-  }
+  HardnessFeedback _hardness = HardnessFeedback.right;
+  bool _pain = false;
+  NextSessionTiming _timing = NextSessionTiming.tomorrow;
 
   @override
   Widget build(BuildContext context) {
-    final totalSets = widget.session.loggedExercises.fold<int>(0, (sum, exercise) => sum + exercise.sets.length);
-    final totalVolume = widget.session.loggedExercises.fold<double>(
-      0,
-      (sum, exercise) => sum + exercise.sets.fold<double>(0, (x, set) => x + (set.loadKg * set.reps)),
-    );
+    final repo = FitnessScope.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF080808),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            const Text('[ SYSTEM MESSAGE ]', style: TextStyle(fontFamily: 'monospace', color: Color(0xFF5AB4E0))),
-            const SizedBox(height: 20),
-            const Text('SESSION COMPLETE', style: TextStyle(color: Color(0xFFEFEFEF), fontSize: 28, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            Text('+${widget.xpGained} XP', style: const TextStyle(color: Color(0xFF5AB4E0), fontFamily: 'monospace', fontSize: 26)),
-            const SizedBox(height: 14),
-            _row('Duration', '${widget.session.durationMinutes} min'),
-            _row('Sets Logged', '$totalSets'),
-            _row('Difficulty', widget.session.difficultyTier.name.toUpperCase()),
-            _row('Volume', '${totalVolume.toStringAsFixed(0)} kg'),
-            const SizedBox(height: 20),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const NavigationShell()),
-                  (route) => false,
-                );
-              },
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF5AB4E0))),
-              child: const Text('DONE'),
-            ),
-          ],
-        ),
+      appBar: AppBar(title: const Text('Post-workout check-in')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'Nice work showing up.',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'How hard was that?',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: HardnessFeedback.values.map((item) {
+              final selected = _hardness == item;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => setState(() => _hardness = item),
+                    child: Ink(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? _hardnessColor(item)
+                            : const Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: selected
+                              ? _hardnessColor(item)
+                              : const Color(0xFFDED6CC),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Text(
+                        _hardnessLabel(item),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Any pain or discomfort?',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: _pain ? const Color(0xFFFAE8E6) : null,
+                  ),
+                  onPressed: () => setState(() => _pain = true),
+                  child: const Text('Yes'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: !_pain ? const Color(0xFFD4EDDA) : null,
+                  ),
+                  onPressed: () => setState(() => _pain = false),
+                  child: const Text('No'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'When do you want the next session?',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<NextSessionTiming>(
+            segments: const [
+              ButtonSegment(
+                  value: NextSessionTiming.tomorrow, label: Text('Tomorrow')),
+              ButtonSegment(
+                  value: NextSessionTiming.later, label: Text('Later')),
+            ],
+            selected: {_timing},
+            onSelectionChanged: (selection) =>
+                setState(() => _timing = selection.first),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: () {
+              repo.submitCheckIn(
+                PostWorkoutCheckIn(
+                  hardness: _hardness,
+                  painReported: _pain,
+                  nextSessionTiming: _timing,
+                  submittedAt: DateTime.now(),
+                ),
+              );
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const NavigationShell()),
+                (route) => false,
+              );
+            },
+            child: const Text('Save check-in'),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Color(0xFF888888))),
-          Text(value, style: const TextStyle(color: Color(0xFFEFEFEF), fontFamily: 'monospace')),
-        ],
-      ),
-    );
+  Color _hardnessColor(HardnessFeedback item) {
+    return switch (item) {
+      HardnessFeedback.tooEasy => const Color(0xFFD4EDDA),
+      HardnessFeedback.right => const Color(0xFFF2E8D9),
+      HardnessFeedback.tooHard => const Color(0xFFFAE8E6),
+    };
+  }
+
+  String _hardnessLabel(HardnessFeedback item) {
+    return switch (item) {
+      HardnessFeedback.tooEasy => 'Too easy',
+      HardnessFeedback.right => 'Just right',
+      HardnessFeedback.tooHard => 'Too hard',
+    };
   }
 }

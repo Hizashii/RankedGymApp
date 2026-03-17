@@ -6,180 +6,270 @@ import 'package:ranked_gym/app/screens/session_summary_screen.dart';
 import 'package:ranked_gym/core/data/models.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
-  const ActiveWorkoutScreen({
-    required this.program,
-    super.key,
-  });
-
-  final Program program;
+  const ActiveWorkoutScreen({super.key});
 
   @override
   State<ActiveWorkoutScreen> createState() => _ActiveWorkoutScreenState();
 }
 
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
-  Timer? _timer;
-  int _elapsedSeconds = 0;
   int _exerciseIndex = 0;
-  int _selectedReps = 8;
-  double _selectedLoad = 40;
-  double _selectedRpe = 8;
-  final Map<String, List<WorkoutSet>> _setsByExercise = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _elapsedSeconds++);
-    });
-  }
+  final Map<int, int> _setsDoneByExercise = {};
+  Timer? _restTimer;
+  bool _isResting = false;
+  int _restSecondsRemaining = 0;
+  int _restTotalSeconds = 1;
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _restTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final repo = FitnessScope.of(context);
-    final currentExercise = repo.exerciseById(widget.program.exerciseIds[_exerciseIndex]);
-    final exerciseId = currentExercise?.id ?? widget.program.exerciseIds[_exerciseIndex];
-    final sets = _setsByExercise[exerciseId] ?? [];
+    final session = repo.currentSession;
+    if (session == null) {
+      return const Scaffold(
+        body: Center(child: Text('No active session available.')),
+      );
+    }
+
+    if (_exerciseIndex >= session.exercises.length) {
+      _exerciseIndex =
+          session.exercises.isEmpty ? 0 : session.exercises.length - 1;
+    }
+    final current = session.exercises[_exerciseIndex];
+    final exercise = repo.exerciseById(current.exerciseId);
+    final swaps = repo.swapCandidatesFor(current.exerciseId);
+    final setsDone =
+        (_setsDoneByExercise[_exerciseIndex] ?? 0).clamp(0, current.sets);
+    final allSetsDone = setsDone >= current.sets;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF080808),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Text('[ SYSTEM ] ACTIVE SESSION', style: TextStyle(fontFamily: 'monospace', color: Color(0xFF5AB4E0))),
-            const Divider(color: Color(0xFF141414)),
-            Text(_formatTime(_elapsedSeconds), style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFEFEFEF), fontSize: 34)),
-            const Divider(color: Color(0xFF141414)),
-            Text(currentExercise?.name ?? 'Exercise', style: const TextStyle(color: Color(0xFFEFEFEF), fontSize: 20, fontWeight: FontWeight.w700)),
-            Text('Set ${sets.length + 1}'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _valueStepper('kg', _selectedLoad.toStringAsFixed(1), () => setState(() => _selectedLoad = mathMax(0, _selectedLoad - 0.5)), () => setState(() => _selectedLoad += 0.5))),
-                const SizedBox(width: 8),
-                Expanded(child: _valueStepper('reps', '$_selectedReps', () => setState(() => _selectedReps = (_selectedReps - 1).clamp(1, 50)), () => setState(() => _selectedReps++))),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              children: List.generate(10, (index) {
-                final value = (index + 1).toDouble();
-                final selected = _selectedRpe == value;
-                return OutlinedButton(
-                  onPressed: () => setState(() => _selectedRpe = value),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: selected ? const Color(0xFF5AB4E0) : const Color(0xFF1A1A1A)),
+      appBar: AppBar(
+          title: Text(
+              'Exercise ${_exerciseIndex + 1} of ${session.exercises.length}')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(exercise?.name ?? current.exerciseId,
+              style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          Text(
+              '${current.sets} sets • ${current.reps} reps • ${current.restSeconds}s rest'),
+          const SizedBox(height: 10),
+          Card(
+            color: const Color(0xFFEAF3FF),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Set tracker',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  child: Text('${index + 1}', style: TextStyle(color: selected ? const Color(0xFF5AB4E0) : const Color(0xFF888888))),
-                );
-              }),
-            ),
-            const SizedBox(height: 10),
-            ...sets.map((set) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('Set  ${set.loadKg.toStringAsFixed(1)}kg x ${set.reps}  RPE ${set.rpe}', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888))),
-                )),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () {
-                final next = [...sets, WorkoutSet(reps: _selectedReps, loadKg: _selectedLoad, rpe: _selectedRpe)];
-                setState(() => _setsByExercise[exerciseId] = next);
-              },
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF5AB4E0))),
-              child: const Text('LOG SET'),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _exerciseIndex == 0 ? null : () => setState(() => _exerciseIndex--),
-                    child: const Text('PREV EXERCISE'),
+                  const SizedBox(height: 6),
+                  Text(
+                    allSetsDone
+                        ? 'Set ${current.sets} of ${current.sets} done ✓'
+                        : 'Set $setsDone of ${current.sets} done',
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _exerciseIndex == widget.program.exerciseIds.length - 1
-                        ? null
-                        : () => setState(() => _exerciseIndex++),
-                    child: const Text('NEXT EXERCISE'),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: current.sets == 0 ? 0 : setsDone / current.sets,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                final logged = widget.program.exerciseIds.map((id) {
-                  return LoggedExercise(
-                    exerciseId: id,
-                    sets: _setsByExercise[id] ?? const [],
-                  );
-                }).toList();
-                final repo = FitnessScope.of(context);
-                final previousRank = repo.currentRank;
-                final session = WorkoutSession(
-                  id: 'session_${DateTime.now().millisecondsSinceEpoch}',
-                  date: DateTime.now(),
-                  durationMinutes: (_elapsedSeconds / 60).ceil(),
-                  difficultyTier: DifficultyTier.hard,
-                  completed: true,
-                  loggedExercises: logged,
-                );
-                final xp = repo.calculateSessionXp(session.difficultyTier, session.durationMinutes);
-                repo.logFullSession(session);
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => SessionSummaryScreen(
-                      session: session,
-                      xpGained: xp,
-                      previousRank: previousRank,
-                      newRank: repo.currentRank,
+          ),
+          if (_isResting) ...[
+            const SizedBox(height: 10),
+            Card(
+              color: const Color(0xFFF2E8D9),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Rest timer',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${_restSecondsRemaining}s remaining',
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF5AB4E0))),
-              child: const Text('FINISH SESSION'),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: 1 - (_restSecondsRemaining / _restTotalSeconds),
+                      minHeight: 8,
+                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFC9611A),
+                      backgroundColor: const Color(0xFFDED6CC),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE6F1FB),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(exercise?.formTip ??
+                'Move with control and stop before strain.'),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: allSetsDone
+                ? null
+                : () {
+                    final nextDone = (setsDone + 1).clamp(0, current.sets);
+                    setState(() {
+                      _setsDoneByExercise[_exerciseIndex] = nextDone;
+                    });
+                    _startRestTimer(current.restSeconds);
+                  },
+            child: Text(allSetsDone ? 'All sets complete' : 'Next set'),
+          ),
+          if (allSetsDone)
+            OutlinedButton(
+              onPressed: _exerciseIndex >= session.exercises.length - 1
+                  ? null
+                  : () {
+                      _stopRestTimer();
+                      setState(() => _exerciseIndex += 1);
+                    },
+              child: const Text('Move to next exercise'),
+            ),
+          OutlinedButton(
+            onPressed: swaps.isEmpty
+                ? null
+                : () => _showSwapSheet(context, swaps, (replacement) {
+                      repo.swapExercise(
+                          index: _exerciseIndex,
+                          replacementExerciseId: replacement.id);
+                      Navigator.of(context).pop();
+                      setState(() {});
+                    }),
+            child: const Text('Swap exercise'),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              _stopRestTimer();
+              repo.skipExercise(_exerciseIndex);
+              setState(() {
+                if (_exerciseIndex > 0) _exerciseIndex -= 1;
+              });
+            },
+            child: const Text('Skip exercise'),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _exerciseIndex == 0
+                      ? null
+                      : () {
+                          _stopRestTimer();
+                          setState(() => _exerciseIndex -= 1);
+                        },
+                  child: const Text('Previous'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _exerciseIndex >= session.exercises.length - 1
+                      ? null
+                      : () {
+                          _stopRestTimer();
+                          setState(() => _exerciseIndex += 1);
+                        },
+                  child: const Text('Next'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () {
+              _stopRestTimer();
+              repo.completeCurrentSession();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const SessionSummaryScreen()),
+              );
+            },
+            child: const Text('Finish workout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startRestTimer(int seconds) {
+    _restTimer?.cancel();
+    final safeSeconds = seconds <= 0 ? 30 : seconds;
+    setState(() {
+      _isResting = true;
+      _restSecondsRemaining = safeSeconds;
+      _restTotalSeconds = safeSeconds;
+    });
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_restSecondsRemaining <= 1) {
+        timer.cancel();
+        setState(() {
+          _isResting = false;
+          _restSecondsRemaining = 0;
+        });
+        return;
+      }
+      setState(() {
+        _restSecondsRemaining -= 1;
+      });
+    });
+  }
+
+  void _stopRestTimer() {
+    _restTimer?.cancel();
+    _restTimer = null;
+    _isResting = false;
+    _restSecondsRemaining = 0;
+    _restTotalSeconds = 1;
+  }
+
+  void _showSwapSheet(
+    BuildContext context,
+    List<ExerciseDefinition> swaps,
+    void Function(ExerciseDefinition replacement) onSelect,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Choose a swap')),
+            ...swaps.map(
+              (item) => ListTile(
+                title: Text(item.name),
+                subtitle: Text(item.formTip),
+                onTap: () => onSelect(item),
+              ),
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _valueStepper(String label, String value, VoidCallback onMinus, VoidCallback onPlus) {
-    return Row(
-      children: [
-        IconButton(onPressed: onMinus, icon: const Icon(Icons.remove, size: 16)),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(border: Border.all(color: const Color(0xFF1A1A1A))),
-            child: Text('$value $label', textAlign: TextAlign.center),
-          ),
-        ),
-        IconButton(onPressed: onPlus, icon: const Icon(Icons.add, size: 16)),
-      ],
-    );
-  }
-
-  String _formatTime(int totalSeconds) {
-    final h = (totalSeconds ~/ 3600).toString().padLeft(2, '0');
-    final m = ((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0');
-    final s = (totalSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
-  double mathMax(double a, double b) => a > b ? a : b;
 }
