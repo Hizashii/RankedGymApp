@@ -81,6 +81,13 @@ class QuestEngine {
   Quest updateProgressFromSession(Quest quest, WorkoutSession session) {
     if (!session.completed) return quest;
     switch (quest.type) {
+      case QuestType.daily:
+      case QuestType.weekly:
+        final dayProgress = quest.progress + 1;
+        return quest.copyWith(
+          progress: dayProgress,
+          completed: dayProgress >= quest.target,
+        );
       case QuestType.consistency:
         final next = quest.progress + 1;
         return quest.copyWith(progress: next, completed: next >= quest.target);

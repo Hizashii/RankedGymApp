@@ -10,6 +10,10 @@ class SeedData {
       bodyweightKg: 76,
       goal: FitnessGoal.hypertrophy,
       availableEquipment: {'barbell', 'dumbbell', 'cable', 'bodyweight'},
+      streakDays: 3,
+      totalXp: 480,
+      coins: 180,
+      lastSessionDate: DateTime.now().subtract(const Duration(days: 1)),
     );
   }
 

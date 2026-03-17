@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ranked_gym/app/navigation_shell.dart';
+import 'package:ranked_gym/app/screens/onboarding/onboarding_flow.dart';
 import 'package:ranked_gym/app/widgets/animated_particles_background.dart';
 import 'package:ranked_gym/core/data/fitness_repository.dart';
 
@@ -58,7 +59,15 @@ class _StartupGateState extends State<StartupGate>
       return;
     }
     repo.registerPlayer(name);
-    setState(() => _entered = true);
+    if (repo.onboardingComplete) {
+      setState(() => _entered = true);
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => OnboardingFlow(repository: repo),
+      ),
+    );
   }
 
   @override

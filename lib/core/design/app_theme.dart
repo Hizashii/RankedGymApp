@@ -2,37 +2,39 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   static ThemeData animeTheme() {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1E90FF),
-      brightness: Brightness.dark,
-    );
     return ThemeData(
       useMaterial3: true,
-      colorScheme: colorScheme,
-      scaffoldBackgroundColor: const Color(0xFF090B13),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF5AB4E0),
+        surface: Color(0xFF0D0D0D),
+      ),
+      scaffoldBackgroundColor: const Color(0xFF080808),
       appBarTheme: const AppBarTheme(
-        centerTitle: true,
-        backgroundColor: Color(0xFF090B13),
+        centerTitle: false,
+        backgroundColor: Color(0xFF080808),
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF11182A),
+        color: const Color(0xFF0D0D0D),
         margin: const EdgeInsets.symmetric(vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: Color(0xFF213254), width: 1),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Color(0xFF1A1A1A), width: 1),
         ),
       ),
       chipTheme: const ChipThemeData(
-        backgroundColor: Color(0xFF16213A),
+        backgroundColor: Color(0xFF0D0D0D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Color(0xFF1A1A1A)),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF102035),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      navigationBarTheme: const NavigationBarThemeData(
-        backgroundColor: Color(0xFF0E1322),
-        indicatorColor: Color(0x661E90FF),
+        backgroundColor: const Color(0xFF0D0D0D),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Color(0xFF1A1A1A)),
+        ),
       ),
     );
   }

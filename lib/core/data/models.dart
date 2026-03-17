@@ -1,10 +1,30 @@
 enum Sex { male, female, other }
 
-enum FitnessGoal { strength, hypertrophy, conditioning, general }
+enum FitnessGoal {
+  weightLoss,
+  hypertrophy,
+  strength,
+  endurance,
+  generalFitness,
+  // Backward-compat for existing screen/service switches.
+  conditioning,
+  general,
+}
 
 enum DifficultyTier { easy, moderate, hard, elite }
+enum QuestDifficulty { easy, moderate, hard, elite }
 
-enum QuestType { consistency, overload, weakPoint, milestone }
+enum QuestType {
+  daily,
+  weekly,
+  milestone,
+  // Backward-compat with current quest engine.
+  consistency,
+  overload,
+  weakPoint,
+}
+
+enum SystemMessageType { inactive, active, quest, warning, rankUp }
 enum ChatRole { system, user }
 
 enum MuscleGroup {
@@ -13,17 +33,18 @@ enum MuscleGroup {
   shoulders,
   biceps,
   triceps,
-  core,
-  glutes,
   quads,
   hamstrings,
+  glutes,
   calves,
+  core,
+  fullBody,
 }
 
 enum MovementPattern {
   horizontalPush,
-  verticalPush,
   horizontalPull,
+  verticalPush,
   verticalPull,
   squat,
   hinge,
@@ -32,6 +53,8 @@ enum MovementPattern {
   core,
   conditioning,
 }
+
+enum HunterRank { E, D, C, B, A, S, SS, SSS }
 
 class UserProfile {
   UserProfile({
@@ -42,15 +65,51 @@ class UserProfile {
     required this.bodyweightKg,
     required this.goal,
     required this.availableEquipment,
+    required this.streakDays,
+    required this.totalXp,
+    required this.coins,
+    this.lastSessionDate,
   });
 
   final String id;
   final String name;
   final Sex sex;
   final int age;
+  final int streakDays;
+  final int totalXp;
+  final int coins;
   final double bodyweightKg;
   final FitnessGoal goal;
   final Set<String> availableEquipment;
+  final DateTime? lastSessionDate;
+
+  UserProfile copyWith({
+    String? id,
+    String? name,
+    Sex? sex,
+    int? age,
+    int? streakDays,
+    int? totalXp,
+    int? coins,
+    double? bodyweightKg,
+    FitnessGoal? goal,
+    Set<String>? availableEquipment,
+    DateTime? lastSessionDate,
+  }) {
+    return UserProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      sex: sex ?? this.sex,
+      age: age ?? this.age,
+      streakDays: streakDays ?? this.streakDays,
+      totalXp: totalXp ?? this.totalXp,
+      coins: coins ?? this.coins,
+      bodyweightKg: bodyweightKg ?? this.bodyweightKg,
+      goal: goal ?? this.goal,
+      availableEquipment: availableEquipment ?? this.availableEquipment,
+      lastSessionDate: lastSessionDate ?? this.lastSessionDate,
+    );
+  }
 }
 
 class Exercise {
@@ -182,6 +241,7 @@ class Quest {
     required this.rewardCoins,
     required this.completed,
     required this.claimed,
+    this.expiresAt,
   });
 
   final String id;
@@ -195,15 +255,20 @@ class Quest {
   final int rewardCoins;
   final bool completed;
   final bool claimed;
+  final DateTime? expiresAt;
+
+  String get name => title;
 
   Quest copyWith({
+    String? title,
     double? progress,
     bool? completed,
     bool? claimed,
+    DateTime? expiresAt,
   }) {
     return Quest(
       id: id,
-      title: title,
+      title: title ?? this.title,
       description: description,
       type: type,
       difficulty: difficulty,
@@ -213,8 +278,39 @@ class Quest {
       rewardCoins: rewardCoins,
       completed: completed ?? this.completed,
       claimed: claimed ?? this.claimed,
+      expiresAt: expiresAt ?? this.expiresAt,
     );
   }
+}
+
+class SystemMessage {
+  const SystemMessage({
+    required this.text,
+    required this.type,
+    required this.timestamp,
+  });
+
+  final String text;
+  final SystemMessageType type;
+  final DateTime timestamp;
+}
+
+class NutritionPlan {
+  const NutritionPlan({
+    required this.dailyKcal,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatG,
+    required this.targetWeightKg,
+    required this.strategy,
+  });
+
+  final int dailyKcal;
+  final int proteinG;
+  final int carbsG;
+  final int fatG;
+  final double targetWeightKg;
+  final String strategy;
 }
 
 class RewardWallet {

@@ -94,6 +94,8 @@ class ProgressionEngine {
 
   double _patternWeight(MovementPattern pattern, FitnessGoal goal) {
     switch (goal) {
+      case FitnessGoal.weightLoss:
+        return pattern == MovementPattern.conditioning ? 1.35 : 0.95;
       case FitnessGoal.strength:
         return {
               MovementPattern.squat: 1.3,
@@ -110,6 +112,10 @@ class ProgressionEngine {
               MovementPattern.verticalPush: 1.1,
             }[pattern] ??
             1.0;
+      case FitnessGoal.endurance:
+        return pattern == MovementPattern.conditioning ? 1.4 : 0.9;
+      case FitnessGoal.generalFitness:
+        return 1.0;
       case FitnessGoal.conditioning:
         return pattern == MovementPattern.conditioning ? 1.4 : 0.95;
       case FitnessGoal.general:

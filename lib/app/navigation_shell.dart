@@ -59,15 +59,82 @@ class _NavigationShellState extends State<NavigationShell> {
           SafeArea(child: _pages[_index]),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Training'),
-          NavigationDestination(icon: Icon(Icons.emoji_events), label: 'Quests'),
-          NavigationDestination(icon: Icon(Icons.query_stats), label: 'Statistics'),
-          NavigationDestination(icon: Icon(Icons.restaurant_menu), label: 'Nutrition'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF080808),
+          border: Border(top: BorderSide(color: Color(0xFF141414))),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            _NavItem(
+              icon: Icons.fitness_center,
+              label: 'Training',
+              active: _index == 0,
+              onTap: () => setState(() => _index = 0),
+            ),
+            _NavItem(
+              icon: Icons.emoji_events,
+              label: 'Quests',
+              active: _index == 1,
+              onTap: () => setState(() => _index = 1),
+            ),
+            _NavItem(
+              icon: Icons.query_stats,
+              label: 'Statistics',
+              active: _index == 2,
+              onTap: () => setState(() => _index = 2),
+            ),
+            _NavItem(
+              icon: Icons.restaurant_menu,
+              label: 'Nutrition',
+              active: _index == 3,
+              onTap: () => setState(() => _index = 3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? const Color(0xFF5AB4E0) : const Color(0xFF333333);
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
