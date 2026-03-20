@@ -14,6 +14,12 @@ enum HardnessFeedback { tooEasy, right, tooHard }
 
 enum NextSessionTiming { tomorrow, later }
 
+enum ReturnMode {
+  spark, // Short, high-success (Day 1-3)
+  build, // Increasing volume (Day 4-14)
+  steady, // Standard progression (14+)
+}
+
 class OnboardingAnswers {
   const OnboardingAnswers({
     required this.goal,
@@ -67,6 +73,9 @@ class ExerciseDefinition {
     required this.formTip,
     required this.equipment,
     required this.swaps,
+    this.imageUrlA,
+    this.imageUrlB,
+    this.threeKeys = const [],
   });
 
   final String id;
@@ -74,6 +83,9 @@ class ExerciseDefinition {
   final String formTip;
   final EquipmentOption equipment;
   final List<String> swaps;
+  final String? imageUrlA;
+  final String? imageUrlB;
+  final List<String> threeKeys;
 
   Map<String, dynamic> toMap() {
     return {
@@ -82,6 +94,9 @@ class ExerciseDefinition {
       'formTip': formTip,
       'equipment': equipment.name,
       'swaps': swaps,
+      'imageUrlA': imageUrlA,
+      'imageUrlB': imageUrlB,
+      'threeKeys': threeKeys,
     };
   }
 
@@ -95,6 +110,11 @@ class ExerciseDefinition {
       swaps: ((map['swaps'] as List<dynamic>?) ?? [])
           .map((item) => '$item')
           .toList(),
+      imageUrlA: map['imageUrlA'] as String?,
+      imageUrlB: map['imageUrlB'] as String?,
+      threeKeys: ((map['threeKeys'] as List<dynamic>?) ?? [])
+          .map((item) => '$item')
+          .toList(),
     );
   }
 }
@@ -105,24 +125,32 @@ class SessionExercise {
     required this.sets,
     required this.reps,
     required this.restSeconds,
+    this.originalSets,
+    this.originalReps,
   });
 
   final String exerciseId;
   final int sets;
   final int reps;
   final int restSeconds;
+  final int? originalSets;
+  final int? originalReps;
 
   SessionExercise copyWith({
     String? exerciseId,
     int? sets,
     int? reps,
     int? restSeconds,
+    int? originalSets,
+    int? originalReps,
   }) {
     return SessionExercise(
       exerciseId: exerciseId ?? this.exerciseId,
       sets: sets ?? this.sets,
       reps: reps ?? this.reps,
       restSeconds: restSeconds ?? this.restSeconds,
+      originalSets: originalSets ?? this.originalSets,
+      originalReps: originalReps ?? this.originalReps,
     );
   }
 
@@ -132,6 +160,8 @@ class SessionExercise {
       'sets': sets,
       'reps': reps,
       'restSeconds': restSeconds,
+      'originalSets': originalSets,
+      'originalReps': originalReps,
     };
   }
 
@@ -141,6 +171,8 @@ class SessionExercise {
       sets: (map['sets'] as num).toInt(),
       reps: (map['reps'] as num).toInt(),
       restSeconds: (map['restSeconds'] as num).toInt(),
+      originalSets: (map['originalSets'] as num?)?.toInt(),
+      originalReps: (map['originalReps'] as num?)?.toInt(),
     );
   }
 }
@@ -178,6 +210,9 @@ class AssignedSession {
     required this.reassurance,
     required this.exercises,
     required this.scheduledDate,
+    this.intensityMultiplier = 1.0,
+    this.isModified = false,
+    this.originalEstimatedMinutes,
   });
 
   final String id;
@@ -189,6 +224,9 @@ class AssignedSession {
   final String reassurance;
   final List<SessionExercise> exercises;
   final DateTime scheduledDate;
+  final double intensityMultiplier;
+  final bool isModified;
+  final int? originalEstimatedMinutes;
 
   AssignedSession copyWith({
     String? id,
@@ -200,6 +238,9 @@ class AssignedSession {
     String? reassurance,
     List<SessionExercise>? exercises,
     DateTime? scheduledDate,
+    double? intensityMultiplier,
+    bool? isModified,
+    int? originalEstimatedMinutes,
   }) {
     return AssignedSession(
       id: id ?? this.id,
@@ -211,6 +252,10 @@ class AssignedSession {
       reassurance: reassurance ?? this.reassurance,
       exercises: exercises ?? this.exercises,
       scheduledDate: scheduledDate ?? this.scheduledDate,
+      intensityMultiplier: intensityMultiplier ?? this.intensityMultiplier,
+      isModified: isModified ?? this.isModified,
+      originalEstimatedMinutes:
+          originalEstimatedMinutes ?? this.originalEstimatedMinutes,
     );
   }
 
@@ -225,6 +270,9 @@ class AssignedSession {
       'reassurance': reassurance,
       'exercises': exercises.map((item) => item.toMap()).toList(),
       'scheduledDate': scheduledDate.toIso8601String(),
+      'intensityMultiplier': intensityMultiplier,
+      'isModified': isModified,
+      'originalEstimatedMinutes': originalEstimatedMinutes,
     };
   }
 
@@ -242,6 +290,9 @@ class AssignedSession {
           .map((item) => SessionExercise.fromMap(item as Map<String, dynamic>))
           .toList(),
       scheduledDate: DateTime.parse(map['scheduledDate'] as String),
+      intensityMultiplier: (map['intensityMultiplier'] as num?)?.toDouble() ?? 1.0,
+      isModified: map['isModified'] as bool? ?? false,
+      originalEstimatedMinutes: (map['originalEstimatedMinutes'] as num?)?.toInt(),
     );
   }
 }
@@ -252,12 +303,14 @@ class PostWorkoutCheckIn {
     required this.painReported,
     required this.nextSessionTiming,
     required this.submittedAt,
+    this.wasEmergencyExit = false,
   });
 
   final HardnessFeedback hardness;
   final bool painReported;
   final NextSessionTiming nextSessionTiming;
   final DateTime submittedAt;
+  final bool wasEmergencyExit;
 
   Map<String, dynamic> toMap() {
     return {
@@ -265,6 +318,7 @@ class PostWorkoutCheckIn {
       'painReported': painReported,
       'nextSessionTiming': nextSessionTiming.name,
       'submittedAt': submittedAt.toIso8601String(),
+      'wasEmergencyExit': wasEmergencyExit,
     };
   }
 
@@ -276,6 +330,7 @@ class PostWorkoutCheckIn {
       nextSessionTiming: NextSessionTiming.values
           .firstWhere((value) => value.name == map['nextSessionTiming']),
       submittedAt: DateTime.parse(map['submittedAt'] as String),
+      wasEmergencyExit: map['wasEmergencyExit'] as bool? ?? false,
     );
   }
 }
@@ -322,3 +377,4 @@ class CompletedSession {
     );
   }
 }
+

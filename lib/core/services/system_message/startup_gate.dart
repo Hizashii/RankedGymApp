@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ranked_gym/app/navigation_shell.dart';
-import 'package:ranked_gym/app/screens/onboarding/onboarding_flow.dart';
+import 'package:ranked_gym/app/screens/onboarding/onboarding_flow_multistep.dart';
 import 'package:ranked_gym/core/data/fitness_repository.dart';
 
 class StartupGate extends StatefulWidget {

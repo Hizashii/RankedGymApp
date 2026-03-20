@@ -32,7 +32,7 @@ class _RankedGymAppState extends State<RankedGymApp> {
       child: MaterialApp(
         title: 'RankedGym',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.animeTheme(),
+        theme: AppTheme.comebackTheme(),
         home: StartupGate(repository: _repository),
       ),
     );

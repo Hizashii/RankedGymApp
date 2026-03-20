@@ -32,8 +32,8 @@ class FitnessRepository extends ChangeNotifier {
       currentSession: HiveService.loadCurrentSession(),
       upcoming: HiveService.loadUpcomingSessions(),
       completedSessions: HiveService.loadCompletedSessions(),
-      difficultyOffset: HiveService.loadDifficultyOffset(),
-      reduceLoadFlag: HiveService.loadReduceLoadFlag(),
+      difficultyOffset: 0, // Obsolete
+      reduceLoadFlag: false, // Obsolete
       exercises: SeedData.exercises(),
       templates: SeedData.templates(),
     );
@@ -52,8 +52,8 @@ class FitnessRepository extends ChangeNotifier {
   AssignedSession? _currentSession;
   List<AssignedSession> _upcomingSessions;
   final List<CompletedSession> _completedSessions;
-  int _difficultyOffset;
-  bool _reduceLoadFlag;
+  int _difficultyOffset; // Still kept for now but unused in logic
+  bool _reduceLoadFlag; // Still kept for now but unused in logic
   final List<ExerciseDefinition> _exercises;
   final List<RestartSessionTemplate> _templates;
 
@@ -78,6 +78,22 @@ class FitnessRepository extends ChangeNotifier {
     return _currentSession!.dayNumber;
   }
 
+  int get daysOff {
+    if (_completedSessions.isEmpty) return 0;
+    final lastDate = _completedSessions.first.completedAt;
+    return DateTime.now().difference(lastDate).inDays;
+  }
+
+  HardnessFeedback? get lastFeedback {
+    if (_completedSessions.isEmpty) return null;
+    return _completedSessions.first.checkIn?.hardness;
+  }
+
+  bool get lastPainReported {
+    if (_completedSessions.isEmpty) return false;
+    return _completedSessions.first.checkIn?.painReported ?? false;
+  }
+
   int get daysReturnedThisMonth {
     final now = DateTime.now();
     final keySet = <String>{};
@@ -93,17 +109,39 @@ class FitnessRepository extends ChangeNotifier {
 
   int get continuityScore {
     if (_completedSessions.isEmpty) return 0;
-    final recent = _completedSessions.take(8).toList();
-    final withCheckIn = recent.where((item) => item.checkIn != null).toList();
-    final rightCount = withCheckIn
-        .where((item) => item.checkIn!.hardness == HardnessFeedback.right)
-        .length;
-    final painCount =
-        withCheckIn.where((item) => item.checkIn!.painReported).length;
-    final base = (sessionsCompleted * 12).clamp(0, 75);
-    final rightBonus = (rightCount * 8).clamp(0, 25);
-    final painPenalty = painCount * 7;
-    return (base + rightBonus - painPenalty).clamp(0, 100);
+    
+    // Growth: +12 per session (8 sessions = ~96%)
+    int score = _completedSessions.length * 12;
+    
+    // Slow Decay (The Pulse): -3 per day since last session, starting after 48 hours
+    final daysSinceLast = daysOff;
+    if (daysSinceLast > 2) {
+      score -= (daysSinceLast - 2) * 3;
+    }
+
+    return score.clamp(0, 100);
+  }
+
+  ReturnMode get currentReturnMode {
+    final day = dayNumber;
+    final off = daysOff;
+    if (off > 7 || day <= 3) return ReturnMode.spark;
+    if (day <= 14) return ReturnMode.build;
+    return ReturnMode.steady;
+  }
+
+  void applyShrinkModifier() {
+    if (_currentSession == null) return;
+    _currentSession = _ruleEngine.applyShrinkModifier(_currentSession!);
+    HiveService.saveCurrentSession(_currentSession);
+    notifyListeners();
+  }
+
+  void applyLowEnergyModifier() {
+    if (_currentSession == null) return;
+    _currentSession = _ruleEngine.applyLowEnergyModifier(_currentSession!);
+    HiveService.saveCurrentSession(_currentSession);
+    notifyListeners();
   }
 
   List<AssignedSession> get nextThreeSessions {
@@ -195,14 +233,8 @@ class FitnessRepository extends ChangeNotifier {
     final latest = _completedSessions.first;
     if (latest.checkIn != null) return;
     _completedSessions[0] = latest.copyWith(checkIn: checkIn);
-    _difficultyOffset = _ruleEngine.nextDifficultyOffset(
-      currentOffset: _difficultyOffset,
-      hardness: checkIn.hardness,
-      painReported: checkIn.painReported,
-    );
-    _reduceLoadFlag = checkIn.painReported;
-    HiveService.saveDifficultyOffset(_difficultyOffset);
-    HiveService.saveReduceLoadFlag(_reduceLoadFlag);
+    
+    // Schedule next session based on feedback
     _scheduleFreshToday(
       spacingDays: _ruleEngine.nextSpacingDays(
         timing: checkIn.nextSessionTiming,
@@ -230,36 +262,47 @@ class FitnessRepository extends ChangeNotifier {
         .toList();
   }
 
-  void _scheduleFreshToday({int spacingDays = 0}) {
+  void rescheduleToday(int minutes) {
+    _scheduleFreshToday(overrideMinutes: minutes);
+    notifyListeners();
+  }
+
+  void _scheduleFreshToday({int spacingDays = 0, int? overrideMinutes}) {
     final answers = _answers;
     if (answers == null) return;
     final day = _completedSessions.length + 1;
     final scheduledDate =
         _dateOnly(DateTime.now().add(Duration(days: spacingDays)));
+    
     _currentSession = _ruleEngine.assignSession(
       answers: answers,
       templates: _templates,
       dayNumber: day,
       scheduledDate: scheduledDate,
-      difficultyOffset: _difficultyOffset,
-      reduceLoad: _reduceLoadFlag,
+      daysOff: daysOff,
+      lastFeedback: lastFeedback,
+      painReported: lastPainReported,
+      overrideMinutes: overrideMinutes,
     );
+    
     _upcomingSessions = [
       _ruleEngine.assignSession(
         answers: answers,
         templates: _templates,
         dayNumber: day + 1,
         scheduledDate: scheduledDate.add(const Duration(days: 2)),
-        difficultyOffset: _difficultyOffset,
-        reduceLoad: _reduceLoadFlag,
+        daysOff: 2, // Assumption for upcoming
+        lastFeedback: null,
+        painReported: false,
       ),
       _ruleEngine.assignSession(
         answers: answers,
         templates: _templates,
         dayNumber: day + 2,
         scheduledDate: scheduledDate.add(const Duration(days: 4)),
-        difficultyOffset: _difficultyOffset,
-        reduceLoad: _reduceLoadFlag,
+        daysOff: 2,
+        lastFeedback: null,
+        painReported: false,
       ),
     ];
     _persist();

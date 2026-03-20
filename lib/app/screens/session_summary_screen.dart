@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ranked_gym/app/navigation_shell.dart';
 import 'package:ranked_gym/app/app.dart';
 import 'package:ranked_gym/core/data/models.dart';
+import 'package:ranked_gym/core/design/app_theme.dart';
 
 class SessionSummaryScreen extends StatefulWidget {
   const SessionSummaryScreen({super.key});
@@ -12,145 +13,183 @@ class SessionSummaryScreen extends StatefulWidget {
 
 class _SessionSummaryScreenState extends State<SessionSummaryScreen> {
   HardnessFeedback _hardness = HardnessFeedback.right;
-  bool _pain = false;
-  NextSessionTiming _timing = NextSessionTiming.tomorrow;
 
   @override
   Widget build(BuildContext context) {
     final repo = FitnessScope.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Post-workout check-in')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'Nice work showing up.',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'How hard was that?',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: HardnessFeedback.values.map((item) {
-              final selected = _hardness == item;
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => setState(() => _hardness = item),
-                    child: Ink(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? _hardnessColor(item)
-                            : const Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: selected
-                              ? _hardnessColor(item)
-                              : const Color(0xFFDED6CC),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Text(
-                        _hardnessLabel(item),
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Any pain or discomfort?',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Row(
+      backgroundColor: AppTheme.bgOffWhite,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: _pain ? const Color(0xFFFAE8E6) : null,
-                  ),
-                  onPressed: () => setState(() => _pain = true),
-                  child: const Text('Yes'),
+              const Spacer(),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppTheme.softSage.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.sentiment_satisfied_alt_rounded,
+                  size: 40,
+                  color: AppTheme.softSage,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: !_pain ? const Color(0xFFD4EDDA) : null,
+              const SizedBox(height: 32),
+              const Text(
+                'You showed up.',
+                style: TextStyle(
+                  color: AppTheme.primaryNavy,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'That is the only metric that matters right now.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.textMutedGray,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+              ),
+              const Spacer(),
+              
+              const Text(
+                'How did that feel?',
+                style: TextStyle(
+                  color: AppTheme.textCharcoal,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _FeedbackSmiley(
+                    label: 'Easy',
+                    icon: Icons.sentiment_very_satisfied_rounded,
+                    isSelected: _hardness == HardnessFeedback.tooEasy,
+                    onTap: () => setState(() => _hardness = HardnessFeedback.tooEasy),
                   ),
-                  onPressed: () => setState(() => _pain = false),
-                  child: const Text('No'),
+                  const SizedBox(width: 16),
+                  _FeedbackSmiley(
+                    label: 'Right',
+                    icon: Icons.sentiment_satisfied_rounded,
+                    isSelected: _hardness == HardnessFeedback.right,
+                    onTap: () => setState(() => _hardness = HardnessFeedback.right),
+                  ),
+                  const SizedBox(width: 16),
+                  _FeedbackSmiley(
+                    label: 'Hard',
+                    icon: Icons.sentiment_neutral_rounded,
+                    isSelected: _hardness == HardnessFeedback.tooHard,
+                    onTap: () => setState(() => _hardness = HardnessFeedback.tooHard),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 64),
+              
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    repo.submitCheckIn(
+                      PostWorkoutCheckIn(
+                        hardness: _hardness,
+                        painReported: false,
+                        nextSessionTiming: NextSessionTiming.tomorrow,
+                        submittedAt: DateTime.now(),
+                      ),
+                    );
+                    Navigator.of(context).pushAndRemoveUntil(
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => const NavigationShell(),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(opacity: animation, child: child);
+                        },
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Finish'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'When do you want the next session?',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          SegmentedButton<NextSessionTiming>(
-            segments: const [
-              ButtonSegment(
-                  value: NextSessionTiming.tomorrow, label: Text('Tomorrow')),
-              ButtonSegment(
-                  value: NextSessionTiming.later, label: Text('Later')),
-            ],
-            selected: {_timing},
-            onSelectionChanged: (selection) =>
-                setState(() => _timing = selection.first),
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: () {
-              repo.submitCheckIn(
-                PostWorkoutCheckIn(
-                  hardness: _hardness,
-                  painReported: _pain,
-                  nextSessionTiming: _timing,
-                  submittedAt: DateTime.now(),
-                ),
-              );
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const NavigationShell()),
-                (route) => false,
-              );
-            },
-            child: const Text('Save check-in'),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Color _hardnessColor(HardnessFeedback item) {
-    return switch (item) {
-      HardnessFeedback.tooEasy => const Color(0xFFD4EDDA),
-      HardnessFeedback.right => const Color(0xFFF2E8D9),
-      HardnessFeedback.tooHard => const Color(0xFFFAE8E6),
-    };
-  }
+class _FeedbackSmiley extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
 
-  String _hardnessLabel(HardnessFeedback item) {
-    return switch (item) {
-      HardnessFeedback.tooEasy => 'Too easy',
-      HardnessFeedback.right => 'Just right',
-      HardnessFeedback.tooHard => 'Too hard',
-    };
+  const _FeedbackSmiley({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.cardWhite : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? AppTheme.softSage : AppTheme.mutedSand,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.textCharcoal.withOpacity(0.05),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  )
+                ]
+              : null,
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: isSelected ? AppTheme.softSage : AppTheme.textMutedGray,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppTheme.primaryNavy : AppTheme.textMutedGray,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
